@@ -10,8 +10,20 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
 
 
-def select_correlated_features(df, threshold=0.85, corr_type='spearman', return_df=False):
-    from pandas import DataFrame
+def select_correlated_features(df, threshold=0.85, 
+                               corr_type:Literal['spearman', 'pearson', 'kendall']='spearman', 
+                               return_df=False):
+    """
+    Checks for Multicollinearity between numerical variables
+
+    :param df: Pandas DataFrame dataset
+    :param threshold: Cutoff for selecting multicollinear variables
+    :param corr_type: Spearman|Kendall|Pearson. Correlation method
+    :param return_df: Boolean to return correlated features as Pandas DataFrame
+    """
+    if not isinstance(df, DataFrame):
+        df = DataFrame(df)
+
     # Calculate the correlation matrix
     corr_matrix = df.corr(corr_type).abs()
     
@@ -33,6 +45,13 @@ def select_correlated_features(df, threshold=0.85, corr_type='spearman', return_
         return correlated_features
 
 def plot_numerical_features_on_top_each_other(train, test=None, numerical_columns=None):
+    """
+    Plots numerical features from train and test sets on top of each other
+
+    :param train: Train dataset
+    :param test: Test dataset
+    :param numerical_columns: Numerical columns to check for multicollinearity
+    """
     if numerical_columns is None:
         numerical_columns = train.select_dtypes('number').columns.tolist()
 
@@ -69,6 +88,13 @@ def plot_numerical_features_on_top_each_other(train, test=None, numerical_column
 
 
 def plot_numerical_features_side_by_side(train, test=None, numerical_columns=None):
+    """
+    Plots numerical features from train and test sets side by side
+
+    :param train: Train dataset
+    :param test: Test dataset
+    :param numerical_columns: Numerical columns to check for multicollinearity
+    """
     if numerical_columns is None:
         numerical_columns = train.select_dtypes('number').columns.tolist()
 
@@ -109,6 +135,13 @@ def plot_numerical_features_side_by_side(train, test=None, numerical_columns=Non
 
 
 def plot_target_distribution(train, target_col, target_type=Literal['categorical', 'numerical']):
+    """
+    Plots target distribution
+
+    :param train: Train dataset
+    :param target_col: Target column name
+    :param target_type: Data type of target variable (categorical or numerical)
+    """
     if target_type == 'categorical':
         countplot(train, x=target_col, hue=target_col, stat='percent', legend=False);
     elif target_type == 'numerical':
@@ -118,6 +151,13 @@ def plot_target_distribution(train, target_col, target_type=Literal['categorical
 
 
 def plot_categorical_features_side_by_side(train, test=None, categorical_columns=None):
+    """
+    Plots categorical features from train and test sets side by side
+
+    :param train: Train dataset
+    :param test: Test dataset
+    :param categorical_columns: Categorical column names
+    """
     if categorical_columns is None:
         categorical_columns = train.select_dtypes(['category', 'object']).columns.tolist()
 
@@ -135,11 +175,19 @@ def plot_categorical_features_side_by_side(train, test=None, categorical_columns
         for i in range(len_categorical):
             cat_col = categorical_columns[i]
             if train[cat_col].nunique() > 8:
-                countplot(train, y=cat_col, ax=ax[i, 0], color='indianred', stat='percent', width=0.8)
-                countplot(test, y=cat_col, ax=ax[i, 1], color='steelblue', stat='percent', width=0.8)
+                countplot(train, y=cat_col, ax=ax[i, 0], 
+                          color='indianred', 
+                          stat='percent', width=0.8)
+                countplot(test, y=cat_col, ax=ax[i, 1], 
+                          color='steelblue', 
+                          stat='percent', width=0.8)
             else:
-                countplot(train, x=cat_col, ax=ax[i, 0], color='indianred', stat='percent', width=0.8)
-                countplot(test, x=cat_col, ax=ax[i, 1], color='steelblue', stat='percent', width=0.8)
+                countplot(train, x=cat_col, ax=ax[i, 0], 
+                          color='indianred', 
+                          stat='percent', width=0.8)
+                countplot(test, x=cat_col, ax=ax[i, 1], 
+                          color='steelblue', 
+                          stat='percent', width=0.8)
         fig.tight_layout()
         plt.show()
 
@@ -165,6 +213,12 @@ def plot_categorical_features_side_by_side(train, test=None, categorical_columns
 
 
 def get_categorical_data_summary(df, col):
+    """
+    Gets summaries of a categorical feature
+
+    :param df: Pandas DataFrame
+    :param col: Categorical column
+    """
     unique = np.unique(df[col])
     missing = df[col].isna().sum()
     missing_perc = 100*df[col].isna().mean()
@@ -172,13 +226,20 @@ def get_categorical_data_summary(df, col):
     return unique, missing, missing_perc, dtype_
 
 
-
 def summarize_categorical_variables(train, test=None, categorical_variables=None):
+    """
+    Returns summary of categorical variables
+
+    :param train: Train Dataset
+    :param test: Test Dataset
+    :param categorical_variables: Categorical Features (Optional)
+    """
     if categorical_variables is None:
         categorical_variables = train.select_dtypes(['object', 'category']).columns.tolist()
     if categorical_variables is None and test is None:
         test_cat_cols = test.select_dtypes(['object', 'category']).columns.tolist()
-        categorical_variables = list(set(test_cat_cols).intersection(set(categorical_variables)))
+        categorical_variables = list(set(test_cat_cols).intersection(
+            set(categorical_variables)))
     
     result = DataFrame()
     result['Feature'] = categorical_variables
@@ -210,6 +271,12 @@ def summarize_categorical_variables(train, test=None, categorical_variables=None
 
 
 def get_numerical_data_summary(df, numerical_variables):
+    """
+    Gets summary of numerical variables
+
+    :param df: Pandas DataFrame
+    :param numerical_variables: Numerical features
+    """
     result = df[numerical_variables].describe()
     nunique = df[numerical_variables].nunique()
     missing = df[numerical_variables].isna().sum()
@@ -228,6 +295,13 @@ def get_numerical_data_summary(df, numerical_variables):
     return result
 
 def summarize_numerical_variables(train, test=None, numerical_columns=None):
+    """
+    Returns summary of numerical variables
+
+    :param train: Train Dataset
+    :param test: Test Dataset
+    :param numerical_variables: Numerical Features (Optional)
+    """
     numerical_variables = numerical_columns
     if numerical_columns is None:
         numerical_variables = train.select_dtypes('number').columns.tolist()
@@ -244,7 +318,18 @@ def summarize_numerical_variables(train, test=None, numerical_columns=None):
 
 ## Data clustering
 
-def get_optimal_clusters(df, n_clusters=13, scale=False, scorer:Literal['silhouette', 'elbow']='elbow'):
+def get_optimal_clusters(df, n_clusters=13, scale=False, 
+                         scorer:Literal['silhouette', 'elbow']='elbow'):
+    """
+    Gets the optimal number of clusters using the Silhouette or Elbow methods
+
+    :param df: Input Data
+    :param n_clusters: Number of clusters to check
+    :param scale: Boolean. To standardize input data
+    :param scorer: Method to use for selecting optimal clusters (silhouette or elbow)
+    """
+    if not isinstance(df, DataFrame):
+        df = DataFrame(df)
     X = df.copy()
     scores = []
     if scale:
@@ -271,6 +356,15 @@ def get_optimal_clusters(df, n_clusters=13, scale=False, scorer:Literal['silhoue
 
 
 def cluster_data(df, n_cluster, scale=False):
+    """
+    Fits a KMeans clustering algorithm based on a defined number of clusers
+
+    :param df: Pandas DataFrame
+    :param n_cluster: Number of clusters to group data
+    :param scale: Boolean. Standardize the input values
+
+    :returns cluster labels and centers for clustered data
+    """
     X = df.copy()
 
     if scale:
