@@ -2,7 +2,7 @@ from dstools.mltools import evaluation
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from typing import Literal, Union
+from typing import Literal, Union, List
 
 
 # Permutation Importance
@@ -40,15 +40,9 @@ def split_data_permutation(X, y, Xval=None, yval= None, cv=None, groups=None,
     return xtrain_, xtest_, ytrain_, ytest_
 
 
-def run_conditional_permutation_type(model, X, y, corr_vals, feature, feature_corr_vars, 
-                                     task_type, scoring, baseline_scores, seed, n_permutations):
-    # baseline_scores = evaluation.eval_metrics(model, X, y, task_type)
-    # baseline_scores.columns = baseline_scores.columns.str.lower()
-    # if scoring in baseline_scores.columns:
-    #     baseline_scores = baseline_scores[scoring].values
-    # else: 
-    #     raise TypeError (f"{scoring} not recognised. Scoring must be in {baseline_scores.columns.str.lower().tolist()}")
-    #     exit()
+def run_conditional_permutation_type(model, X, y, corr_vals, feature, 
+                                     feature_corr_vars, task_type, scoring, 
+                                     baseline_scores, seed, n_permutations) -> List[float, float]:
     X_shuffled = X.copy()
 
     rng = np.random.RandomState(seed)
@@ -65,7 +59,7 @@ def run_conditional_permutation_type(model, X, y, corr_vals, feature, feature_co
     return np.mean(score_difference), np.std(score_difference)
 
 
-def get_baseline_score(model, X, y, task_type, scoring):
+def get_baseline_score(model, X, y, task_type, scoring) -> float:
     """
     Returns baseline scores of model evaluated on holdout test set
     """
@@ -79,15 +73,8 @@ def get_baseline_score(model, X, y, task_type, scoring):
         exit()
     
 
-def run_joint_permutation_type(model, X, y, feature, feature_corr_vars, task_type, scoring, baseline_scores, seed, n_permutations):
-    # baseline_scores = evaluation.eval_metrics(model, X, y, task_type)
-    # baseline_scores.columns = baseline_scores.columns.str.lower()
-    # if scoring in baseline_scores.columns:
-    #     baseline_scores = baseline_scores[scoring].values
-    # else: 
-    #     raise TypeError (f"{scoring} not recognised. Scoring must be in {baseline_scores.columns.tolist()}")
-    #     exit()
-    
+def run_joint_permutation_type(model, X, y, feature, feature_corr_vars, task_type, 
+                               scoring, baseline_scores, seed, n_permutations) -> List[float, float]:
     X_shuffled = X.copy()
     rng = np.random.RandomState(seed)
     score_difference = []
@@ -106,9 +93,9 @@ def run_joint_permutation_type(model, X, y, feature, feature_corr_vars, task_typ
 
 def get_permuted_feature_scores(model, Xtrain, X, y, corr_df, feature, permutation_type, 
                                 task_type, scoring, baseline_scores, seed, n_permutations, 
-                                value_type, check_correlated_variables) -> list[float, float]:
+                                value_type, check_correlated_variables) -> List[float, float]:
     """
-    Gets scores of permuted feature
+    Calculates scores of permuted feature
 
     :param model: Fitted model
     :param Xtrain: Training data for calculating mean or median score for other correlated features during conditional permutation importance
@@ -159,7 +146,7 @@ def permutation_importance(model, X, y, Xval=None, yval=None, cv:Union[None, int
                            numerical_features = None, scoring=None, test_size=0.2, 
                            value_type:Literal['mean', 'median']='mean',
                            permutation_type:Literal['conditional', 'joint', None]=None
-                           ):
+                           ) -> pd.DataFrame:
     """
     Computes baseline model performance and computes the drop in performance after randomly shuffling a feature. 
     Permutation type could be "conditional", "joint", or None.
