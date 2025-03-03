@@ -1,4 +1,4 @@
-from .feature_selection import evaluation
+from dstools.mltools import evaluation
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -41,14 +41,14 @@ def split_data_permutation(X, y, Xval=None, yval= None, cv=None, groups=None,
 
 
 def run_conditional_permutation_type(model, X, y, corr_vals, feature, feature_corr_vars, 
-                                     task_type, scoring, seed, n_permutations):
-    baseline_scores = evaluation.eval_metrics(model, X, y, task_type)
-    baseline_scores.columns = baseline_scores.columns.str.lower()
-    if scoring in baseline_scores.columns:
-        baseline_scores = baseline_scores[scoring].values
-    else: 
-        raise TypeError (f"{scoring} not recognised. Scoring must be in {baseline_scores.columns.str.lower().tolist()}")
-        exit()
+                                     task_type, scoring, baseline_scores, seed, n_permutations):
+    # baseline_scores = evaluation.eval_metrics(model, X, y, task_type)
+    # baseline_scores.columns = baseline_scores.columns.str.lower()
+    # if scoring in baseline_scores.columns:
+    #     baseline_scores = baseline_scores[scoring].values
+    # else: 
+    #     raise TypeError (f"{scoring} not recognised. Scoring must be in {baseline_scores.columns.str.lower().tolist()}")
+    #     exit()
     X_shuffled = X.copy()
 
     rng = np.random.RandomState(seed)
@@ -65,14 +65,28 @@ def run_conditional_permutation_type(model, X, y, corr_vals, feature, feature_co
     return np.mean(score_difference), np.std(score_difference)
 
 
-def run_joint_permutation_type(model, X, y, feature, feature_corr_vars, task_type, scoring, seed, n_permutations):
-    baseline_scores = evaluation.eval_metrics(model, X, y, task_type)
-    baseline_scores.columns = baseline_scores.columns.str.lower()
-    if scoring in baseline_scores.columns:
-        baseline_scores = baseline_scores[scoring].values
+def get_baseline_score(model, X, y, task_type, scoring):
+    """
+    Returns baseline scores of model evaluated on holdout test set
+    """
+    scores = evaluation.eval_metrics(model, X, y, task_type)
+    scores.columns = scores.columns.str.lower()
+    if scoring in scores.columns:
+        scores = scores[scoring].values
+        return scores
     else: 
-        raise TypeError (f"{scoring} not recognised. Scoring must be in {baseline_scores.columns.tolist()}")
+        raise TypeError (f"{scoring} not recognised. Scoring must be in {scores.columns.tolist()}")
         exit()
+    
+
+def run_joint_permutation_type(model, X, y, feature, feature_corr_vars, task_type, scoring, baseline_scores, seed, n_permutations):
+    # baseline_scores = evaluation.eval_metrics(model, X, y, task_type)
+    # baseline_scores.columns = baseline_scores.columns.str.lower()
+    # if scoring in baseline_scores.columns:
+    #     baseline_scores = baseline_scores[scoring].values
+    # else: 
+    #     raise TypeError (f"{scoring} not recognised. Scoring must be in {baseline_scores.columns.tolist()}")
+    #     exit()
     
     X_shuffled = X.copy()
     rng = np.random.RandomState(seed)
@@ -110,7 +124,8 @@ def permutation_importance(model, X, y, Xval=None, yval=None, cv:Union[None, int
     
     
     :param model: Classification or Regression model
-    :params: X, y: Training data
+    :param: X, y: Training data
+    :param: Xval, yval: Validation data
     :param cv: If cross validation should be done. Int value or None. If None, no cross-validation is performed
     :param groups: If cross-validation, groups to split data (Check GroupKFold or StratifiedGroupKFold)
     :param threshold: Threshold to select multicollinear variables
@@ -136,8 +151,12 @@ def permutation_importance(model, X, y, Xval=None, yval=None, cv:Union[None, int
     
     results = []
     print('==> Fitting model to get baseline score')
-    if not isinstance(Xtrain_, list):
+
+    if not isinstance(Xtrain_, list): # if not list
         model.fit(Xtrain_, ytrain_)
+        # get baseline score
+        baseline_scores = get_baseline_score(model, Xtest_, ytest_, task_type, scoring)
+        print(f'Baseline score: {baseline_scores:.4f}\n')
         for feature in tqdm(features, desc='Permutation Importance'):
             if check_correlated_variables:
                 feature_corr_vars = corr_df.query(f'Feature1 == "{feature}"').Feature2.tolist() # get correlated variables
@@ -146,7 +165,7 @@ def permutation_importance(model, X, y, Xval=None, yval=None, cv:Union[None, int
                         # get mean or median values of correlated features
                         corr_vals = Xtrain_[feature_corr_vars].mean() if value_type == 'mean' else Xtrain_[feature_corr_vars].median()
                         mean_score, std_score = run_conditional_permutation_type(model, Xtest_, ytest_, corr_vals, feature, feature_corr_vars, 
-                                                                                task_type, scoring, seed, n_permutations)
+                                                                                task_type, scoring, baseline_scores, seed, n_permutations)
                     elif permutation_type == 'joint':
                         mean_score, std_score = run_joint_permutation_type(model, Xtest_, ytest_, feature, feature_corr_vars, 
                                                                            task_type, scoring, seed, n_permutations)
@@ -157,17 +176,20 @@ def permutation_importance(model, X, y, Xval=None, yval=None, cv:Union[None, int
                     # if no correlation features exist
                     feature_corr_vars = [] # set to empty so that correlated features are not jointly permuted with feature
                     mean_score, std_score = run_joint_permutation_type(model, Xtest_, ytest_, feature, feature_corr_vars, 
-                                                                       task_type, scoring, seed, n_permutations)
+                                                                       task_type, scoring, baseline_scores, seed, n_permutations)
             elif permutation_type is None: 
                 feature_corr_vars = [] # set to empty so that correlated features are not jointly permuted with feature
                 mean_score, std_score = run_joint_permutation_type(model, Xtest_, ytest_, feature, feature_corr_vars, 
-                                                                   task_type, scoring, seed, n_permutations)
+                                                                   task_type, scoring, baseline_scores, seed, n_permutations)
             results.append([mean_score, std_score])
+
     elif isinstance(Xtrain_, list): # cross validation
         cv_result = []
         for i in tqdm(range(len(Xtrain_)), desc='Permutation Importance (crossvalidation)'):
             xtr, xte, ytr, yte = Xtrain_[i], Xtest_[i], ytrain_[i], ytest_[i]
             model.fit(xtr, ytr)
+            baseline_scores = get_baseline_score(model, xte, yte, task_type, scoring)
+            print(f'Fold {i+1} Baseline score: {baseline_scores:.4f}\n')
             feature_result = []
             for feature in features:
                 if check_correlated_variables:
@@ -177,11 +199,11 @@ def permutation_importance(model, X, y, Xval=None, yval=None, cv:Union[None, int
                             # get mean or median values of correlated features
                             corr_vals = xtr[feature_corr_vars].mean() if value_type == 'mean' else xtr[feature_corr_vars].median()
                             mean_score, std_score = run_conditional_permutation_type(model, xte, yte, corr_vals, feature, feature_corr_vars, 
-                                                                                    task_type, scoring, seed, n_permutations)
+                                                                                    task_type, scoring, baseline_scores, seed, n_permutations)
                             # feature_result.append(mean_score)
                         elif permutation_type == 'joint':
                             mean_score, std_score = run_joint_permutation_type(model, xte, yte, feature, feature_corr_vars, 
-                                                                            task_type, scoring, seed, n_permutations)
+                                                                            task_type, scoring, baseline_scores, seed, n_permutations)
                             # feature_result.append(mean_score)
                         else:
                             print(f'{permutation_type} not recognised!')
@@ -190,11 +212,11 @@ def permutation_importance(model, X, y, Xval=None, yval=None, cv:Union[None, int
                         # if no correlation features exist
 
                         mean_score, std_score = run_joint_permutation_type(model, xte, yte, feature, feature_corr_vars, 
-                                                                           task_type, scoring, seed, n_permutations)
+                                                                           task_type, scoring, baseline_scores, seed, n_permutations)
                 elif permutation_type is None: 
                     feature_corr_vars = [] # set to empty so that correlated features are not jointly permuted with feature
                     mean_score, std_score = run_joint_permutation_type(model, xte, yte, feature, feature_corr_vars, 
-                                                                    task_type, scoring, seed, n_permutations)
+                                                                    task_type, scoring, baseline_scores, seed, n_permutations)
                 feature_result.append(mean_score)
             cv_result.append(feature_result)
         cv_result = np.array(cv_result)

@@ -27,20 +27,27 @@ def get_feature_importance_scores(model, columns=None):
     :param model: Fitted Model
     :param columns: None|Model input variables (optional).
     """
+    if hasattr(model, 'coef_'):
+        varimp = model.coef_.squeeze()
+    elif hasattr(model, 'named_steps'):
+        model_name = list(model.named_steps.keys())[-1] # get model name
+        model = model.named_steps[model_name] # reassign model and check for coef_ or feature_importances_ attributes
+        if hasattr(model, 'coef_'):
+            varimp = model.coef_.squeeze()
+        elif hasattr(model, 'feature_importances_'):
+            varimp = model.feature_importances_/model.feature_importances_.sum()    
+    elif hasattr(model, 'feature_importances_'):
+        varimp = model.feature_importances_/model.feature_importances_.sum()
+    else:
+        raise TypeError (f'{model.__class__.__name__} not fitted')
+    
     if columns is None:
         if hasattr(model, 'feature_names_in_'):
             columns = model.feature_names_in_ 
         elif hasattr(model, 'feature_names_'):
             columns = model.feature_names_
-
-    if hasattr(model, 'coef_'):
-        varimp = model.coef_.squeeze()
-    elif hasattr(model, 'named_steps'):
-        model_name = list(model.named_steps.keys())[-1]
-        varimp = model.named_steps[model_name].coef_.squeeze()
-    elif hasattr(model, 'feature_importances_'):
-        varimp = model.feature_importances_/model.feature_importances_.sum()
     return pd.Series(varimp, columns).sort_values(ascending=False)
+
 
 def topn_importance(model, topn=20, columns=None):
     """
@@ -208,7 +215,6 @@ def cross_validate_scores(model, X, y, cv, groups=None, scoring:List[callable, L
             scorer = metrics.make_scorer(scoring)
             res = scorer(clf, yval, preds)
             scores.append(res)
-
         else:
             print(f'{scoring} not recognised. Must be either f1|auc|rmse|mae')
     return np.array(scores)
