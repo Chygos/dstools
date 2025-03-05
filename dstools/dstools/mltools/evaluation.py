@@ -7,11 +7,12 @@ import seaborn as sns
 
 
 ## Evaluation metrics
-def eval_metrics(model, X, y, task_type:Literal['classification', 'regression']='regression', transform_type=None):
+def eval_metrics(model, X, y, task_type:Literal['classification', 'regression']='regression', 
+                 transform_type=None, average_type:Literal['weighted','micro', 'macro']='macro'):
     if task_type == 'regression':
-        scores = regression_eval_metrics(model, X, y, transform_type=transform_type)
+        scores = regression_eval_metrics(model, X, y, transform_type)
     elif task_type == 'classification':
-        scores = classification_eval_metrics(model, X, y)
+        scores = classification_eval_metrics(model, X, y, average_type)
     
     return scores
 
