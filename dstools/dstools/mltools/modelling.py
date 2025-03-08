@@ -3,7 +3,7 @@ from sklearn import metrics
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from typing import Literal, List
+from typing import Literal, Union
 import plotnine as pn
 from lightgbm import log_evaluation
 from lightgbm.callback import early_stopping
@@ -184,7 +184,7 @@ class Model:
             raise Exception(f'{self.model.__class__.__name__} not fitted')
 
 
-def cross_validate_scores(model, X, y, cv, groups=None, scoring:List[callable, Literal['f1', 'auc', 'rmse', 'mae']]='f1'):
+def cross_validate_scores(model, X, y, cv, groups=None, scoring:Union[callable, Literal['f1', 'auc', 'rmse', 'mae']]='f1'):
     """
     Returns model performance scores based on cross-validation
     """
