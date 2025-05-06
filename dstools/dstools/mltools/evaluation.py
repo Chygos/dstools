@@ -116,15 +116,47 @@ def regression_performance_chart_report(model, X, y):
 
 
 def classification_performance_chart_report(model, X, y, display_names=None):
-    display_labs = y.drop_duplicates()
+    display_labs = sorted(y.drop_duplicates())
 
-    fig, ax = plt.subplots(1,3, figsize=(12,5))
-    _ = metrics.RocCurveDisplay.from_estimator(model, X, y, ax=ax[0])
-    _ = metrics.PrecisionRecallDisplay.from_estimator(model, X, y, ax=ax[1])
-    _ = metrics.ConfusionMatrixDisplay.from_estimator(model, X, y, display_labels=display_labs if display_names is None else display_names, 
-                                                      ax=ax[2], cmap ='Greens', colorbar=False)
-    ax[0].set_title('ROC curve', fontsize=10)
-    ax[1].set_title('Precision-Recall curve', fontsize=10)
-    ax[2].set_title('Confusion Matrix', fontsize=10)
-    plt.suptitle(model.__class__.__name__, x=0.15, y=0.90, fontweight='bold')
-    plt.tight_layout()
+    if len(display_labs) > 2:
+        uniq_class = list(display_labs)
+        probas = model.predict_proba(X)
+        preds = model.predict(X)
+        cm = pd.DataFrame(metrics.confusion_matrix(y, preds), index=uniq_class, columns=uniq_class)
+        fig, ax = plt.subplots(1, 3, figsize=(11,4.3))
+        for i in range(len(uniq_class)):
+            y_clas = np.where(y == uniq_class[i], 1, 0)
+            auc = metrics.roc_auc_score(y_clas, probas[:,i])
+            pr_score = metrics.average_precision_score(y_clas, probas[:,i])
+            precision, recall, _ = metrics.precision_recall_curve(y_clas, probas[:,i])
+            fpr, tpr, _ = metrics.roc_curve(y_clas, probas[:,i])
+            ax[0].plot(fpr, tpr, label=uniq_class[i] + f' (AUC={auc:.2f})')
+            ax[1].plot(recall, precision, label=uniq_class[i] + f' (PR={pr_score:.2f})')
+            ax[0].set(xlabel='False Positive Rate', ylabel='True Positive Rate')
+            ax[0].set_title('ROC curve', fontsize=10)
+            ax[1].set(xlabel='Recall', ylabel='Precision')
+            ax[1].set_title('Precision-Recall curve', fontsize=10)
+        
+        sns.heatmap(cm, annot=True, cmap='Greens', cbar=False, ax=ax[2], linecolor='k', square=True)
+        ax[2].set_yticklabels(uniq_class if display_names is None else display_names, rotation=0)
+        ax[2].set(xlabel='Predicted Class', ylabel='Actual Class')
+        ax[2].set_title('Confusion matrix', fontsize=10)
+        
+        fig.suptitle(model.__class__.__name__, fontweight='bold', x=0.12)
+        fig.tight_layout()
+        
+        ax[0].legend(loc='lower right')
+        ax[1].legend(loc='lower left')
+    else:
+        fig, ax = plt.subplots(1,3, figsize=(12,5))
+        _ = metrics.RocCurveDisplay.from_estimator(model, X, y, ax=ax[0])
+        _ = metrics.PrecisionRecallDisplay.from_estimator(model, X, y, ax=ax[1])
+        _ = metrics.ConfusionMatrixDisplay.from_estimator(model, X, y, display_labels=display_labs if display_names is None else display_names, 
+                                                          ax=ax[2], cmap ='Greens', colorbar=False)
+        ax[0].set_title('ROC curve', fontsize=10)
+        ax[1].set_title('Precision-Recall curve', fontsize=10)
+        ax[2].set_title('Confusion Matrix', fontsize=10)
+        plt.suptitle(model.__class__.__name__, x=0.15, y=0.90, fontweight='bold')
+        plt.tight_layout()
+
+    
