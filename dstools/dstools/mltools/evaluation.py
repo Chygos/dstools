@@ -29,7 +29,7 @@ def classification_eval_metrics(model, X, y, average_type:Literal['weighted','mi
         
     elif len(unique_class) > 2:
         probs = model.predict_proba(X)
-        auc = metrics.roc_auc_score(y, probs, average=average_type, multi_class='raise')
+        auc = metrics.roc_auc_score(y, probs, average=average_type, multi_class='ovr')
         rec = metrics.recall_score(y, preds, average=average_type)
         prec = metrics.precision_score(y, preds, average=average_type)
         f1 = metrics.f1_score(y, preds, average=average_type)
