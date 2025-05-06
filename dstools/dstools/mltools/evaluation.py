@@ -17,7 +17,8 @@ def eval_metrics(model, X, y, task_type:Literal['classification', 'regression']=
     return scores
 
 def classification_eval_metrics(model, X, y, average_type:Literal['weighted','micro', 'macro']='macro'):
-    preds = model.predict(X)
+    preds = model.predict(X).ravel()
+    y = y.values if isinstance(y, pd.Series) else y
     unique_class = np.unique(y)
     if len(unique_class) == 2:
         probs = model.predict_proba(X)[:,1]
@@ -67,6 +68,7 @@ def regression_eval_metrics(model, X, y, transform_type=None):
 
 def specificity(preds, actual, unique_class=None, positive_val = 1,
                 average_type:Literal['weighted','micro', 'macro', 'binary']='weighted'):
+        preds = preds.ravel() # convert to 1D
         # class specificity tn / (tn+fp)
         if unique_class is None:
              unique_class = sorted(np.unique(actual))
