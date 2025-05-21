@@ -20,7 +20,7 @@ def tune_parameters(model, X, y, param_grid, scorer='f1', cv=5):
     return gcv
 
 
-def get_feature_importance_scores(model, columns=None):
+def get_feature_importance_scores(model, columns=None, sort=False):
     """
     Returns feature importance scores of fitted model
 
@@ -46,7 +46,8 @@ def get_feature_importance_scores(model, columns=None):
             columns = model.feature_names_in_ 
         elif hasattr(model, 'feature_names_'):
             columns = model.feature_names_
-    return pd.Series(varimp, columns).sort_values(ascending=False)
+    imp_scores = pd.Series(varimp, columns)
+    return imp_scores.sort_values(ascending=False) if sort else imp_scores
 
 
 def topn_importance(model, topn=20, columns=None):

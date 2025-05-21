@@ -123,7 +123,7 @@ def classification_performance_chart_report(model, X, y, display_names=None):
     if len(display_labs) > 2:
         uniq_class = list(display_labs)
         probas = model.predict_proba(X)
-        preds = model.predict(X)
+        preds = model.predict(X).ravel()
         cm = pd.DataFrame(metrics.confusion_matrix(y, preds), index=uniq_class, columns=uniq_class)
         fig, ax = plt.subplots(1, 3, figsize=(11,4.3))
         for i in range(len(uniq_class)):
@@ -132,8 +132,8 @@ def classification_performance_chart_report(model, X, y, display_names=None):
             pr_score = metrics.average_precision_score(y_clas, probas[:,i])
             precision, recall, _ = metrics.precision_recall_curve(y_clas, probas[:,i])
             fpr, tpr, _ = metrics.roc_curve(y_clas, probas[:,i])
-            ax[0].plot(fpr, tpr, label=uniq_class[i] + f' (AUC={auc:.2f})')
-            ax[1].plot(recall, precision, label=uniq_class[i] + f' (PR={pr_score:.2f})')
+            ax[0].plot(fpr, tpr, label=f'{uniq_class[i]} (AUC={auc:.2f})' if display_names is None else f'{display_names[i]} (AUC={auc:.2f})')
+            ax[1].plot(recall, precision, label=f'{uniq_class[i]} (PR={pr_score:.2f})' if display_names is None else f'{display_names[i]} (PR={pr_score:.2f})')
             ax[0].set(xlabel='False Positive Rate', ylabel='True Positive Rate')
             ax[0].set_title('ROC curve', fontsize=10)
             ax[1].set(xlabel='Recall', ylabel='Precision')
@@ -141,6 +141,7 @@ def classification_performance_chart_report(model, X, y, display_names=None):
         
         sns.heatmap(cm, annot=True, cmap='Greens', cbar=False, ax=ax[2], linecolor='k', square=True)
         ax[2].set_yticklabels(uniq_class if display_names is None else display_names, rotation=0)
+        ax[2].set_xticklabels(uniq_class if display_names is None else display_names, rotation=0)
         ax[2].set(xlabel='Predicted Class', ylabel='Actual Class')
         ax[2].set_title('Confusion matrix', fontsize=10)
         
@@ -160,5 +161,3 @@ def classification_performance_chart_report(model, X, y, display_names=None):
         ax[2].set_title('Confusion Matrix', fontsize=10)
         plt.suptitle(model.__class__.__name__, x=0.15, y=0.90, fontweight='bold')
         plt.tight_layout()
-
-    
